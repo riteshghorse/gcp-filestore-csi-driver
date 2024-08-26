@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zonal-15-1
+  namespace: gcp-filestore-csi-driver
+spec:
+  resources:
+    requests:
+      storage: 15Ti
+  storageClassName: csi-filestore-zonal
+  accessModes:
+  - ReadWriteMany

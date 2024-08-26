@@ -53,8 +53,10 @@ const (
 	enterpriseTierMaxSize = 10 * util.Tb
 	highScaleTierMinSize  = 10 * util.Tb
 	highScaleTierMaxSize  = 100 * util.Tb
-	zonalTierMinSize      = 1 * util.Tb
-	zonalTierMaxSize      = 100 * util.Tb
+	zonalLowTierMinSize   = 1 * util.Tb
+	zonalLowTierMaxSize   = 9 * util.Tb
+	zonalHighTierMinSize  = 10 * util.Tb
+	zonalHighTierMaxSize  = 100 * util.Tb
 	premiumTierMinSize    = 25 * util.Tb / 10
 	premiumTierMaxSize    = 639 * util.Tb / 10
 
@@ -321,9 +323,13 @@ func (s *controllerServer) reserveIPRange(ctx context.Context, filer *file.Servi
 	ipRangeSize := util.IpRangeSize
 	if filer.Tier == enterpriseTier {
 		ipRangeSize = util.IpRangeSizeEnterprise
-	}
-	if filer.Tier == highScaleTier || filer.Tier == zonalTier {
+	} else if filer.Tier == highScaleTier {
 		ipRangeSize = util.IpRangeSizeHighScale
+	} else if filer.Tier == zonalTier {
+		ipRangeSize = util.IpRangeSizeEnterprise
+		if filer.Volume.SizeBytes > 9*util.Tb {
+			ipRangeSize = util.IpRangeSizeHighScale
+		}
 	}
 	unreservedIPBlock, err := s.config.ipAllocator.GetUnreservedIPRange(cidr, ipRangeSize, cloudInstancesReservedIPRanges)
 	if err != nil {
@@ -523,12 +529,12 @@ func invalidCapacityRange(capRange *csi.CapacityRange, tier string, validRange *
 }
 
 // init function to get min and max volume sizes per tier
-func provisionableCapacityForTier(tier string) *capacityRangeForTier {
+func provisionableCapacityForTier(tier string, capRange *csi.CapacityRange) *capacityRangeForTier {
 	defaultRange := capacityRangeForTier{min: defaultTierMinSize, max: defaultTierMaxSize}
 	enterpriseRange := capacityRangeForTier{min: enterpriseTierMinSize, max: enterpriseTierMaxSize}
 	highScaleRange := capacityRangeForTier{min: highScaleTierMinSize, max: highScaleTierMaxSize}
 	premiumRange := capacityRangeForTier{min: premiumTierMinSize, max: premiumTierMaxSize}
-	zonalRange := capacityRangeForTier{min: zonalTierMinSize, max: zonalTierMaxSize}
+	zonalRange := capacityRangeForTier{min: zonalLowTierMinSize, max: zonalLowTierMaxSize}
 	provisionableCapacityForTier := map[string]capacityRangeForTier{
 		defaultTier:    defaultRange,
 		enterpriseTier: enterpriseRange,
@@ -544,12 +550,25 @@ func provisionableCapacityForTier(tier string) *capacityRangeForTier {
 	if !ok {
 		validRange = provisionableCapacityForTier[defaultTier]
 	}
+
+	// For the zonal tier, the default is low zonal (1 Ti - 9.75 Ti).
+	// If the capacity range contains higher capacity request, then handle accordingly.
+	// if tier == zonalTier && capRange != nil &&
+	// 	((capRange.GetRequiredBytes() >= 10*util.Tb && ((capRange.GetLimitBytes() > 0 && capRange.GetLimitBytes() >= 10*util.Tb) || capRange.GetLimitBytes() <= 0)) ||
+	// 		((capRange.GetLimitBytes() > 0 && capRange.GetLimitBytes() >= 10*util.Tb) || capRange.GetLimitBytes() <= 0)) {
+	// 	validRange.min = zonalHighTierMinSize
+	// 	validRange.max = zonalHighTierMaxSize
+	// }
+	if tier == zonalTier && capRange != nil && capRange.GetRequiredBytes() >= 10*util.Tb {
+		validRange.min = zonalHighTierMinSize
+		validRange.max = zonalHighTierMaxSize
+	}
 	return &validRange
 }
 
 // getRequestCapacity returns the volume size that should be provisioned
 func getRequestCapacity(capRange *csi.CapacityRange, tier string) (int64, error) {
-	validRange := provisionableCapacityForTier(tier)
+	validRange := provisionableCapacityForTier(tier, capRange)
 
 	if capRange == nil {
 		return validRange.min, nil
@@ -558,7 +577,7 @@ func getRequestCapacity(capRange *csi.CapacityRange, tier string) (int64, error)
 	if err := invalidCapacityRange(capRange, tier, validRange); err != nil {
 		return 0, err
 	}
-
+	klog.Warningf("ritesh, setting low zonal tier limits %v to %v", validRange.min, validRange.max)
 	requiredCap := capRange.GetRequiredBytes()
 	requireSet := requiredCap > 0
 	maxRequired := capRange.GetLimitBytes()
