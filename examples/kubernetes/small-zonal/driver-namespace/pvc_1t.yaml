@@ -6,7 +6,7 @@ metadata:
 spec:
   resources:
     requests:
-      storage: 2Ti
+      storage: 1Ti
   storageClassName: csi-filestore-zonal
   accessModes:
   - ReadWriteMany

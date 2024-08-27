@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -205,7 +206,10 @@ func (s *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-
+	l := log.Default()
+	if capBytes < 2*util.Tb {
+		l.Fatal("cannot allocate an instance of less than 1024 bytes")
+	}
 	klog.V(5).Infof("Using capacity bytes %q for volume %q", capBytes, name)
 
 	newFiler, err := s.generateNewFileInstance(name, capBytes, req.GetParameters(), req.GetAccessibilityRequirements())
@@ -326,10 +330,10 @@ func (s *controllerServer) reserveIPRange(ctx context.Context, filer *file.Servi
 	} else if filer.Tier == highScaleTier {
 		ipRangeSize = util.IpRangeSizeHighScale
 	} else if filer.Tier == zonalTier {
-		ipRangeSize = util.IpRangeSizeEnterprise
-		if filer.Volume.SizeBytes > 9*util.Tb {
-			ipRangeSize = util.IpRangeSizeHighScale
-		}
+		// ipRangeSize = util.IpRangeSizeEnterprise
+		// if filer.Volume.SizeBytes > 9*util.Tb {
+		ipRangeSize = util.IpRangeSizeHighScale
+		// }
 	}
 	unreservedIPBlock, err := s.config.ipAllocator.GetUnreservedIPRange(cidr, ipRangeSize, cloudInstancesReservedIPRanges)
 	if err != nil {

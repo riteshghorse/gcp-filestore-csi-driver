@@ -270,7 +270,8 @@ func NewGCFSService(version string, client *http.Client, primaryFilestoreService
 
 func (manager *gcfsServiceManager) CreateInstance(ctx context.Context, obj *ServiceInstance) (*ServiceInstance, error) {
 	instance := &filev1beta1.Instance{
-		Tier: obj.Tier,
+		MaxCapacityGb: 9984,
+		Tier:          obj.Tier,
 		FileShares: []*filev1beta1.FileShareConfig{
 			{
 				Name:             obj.Volume.Name,
