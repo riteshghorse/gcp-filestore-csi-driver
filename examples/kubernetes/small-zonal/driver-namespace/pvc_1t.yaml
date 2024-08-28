@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: one-tb
+  name: zonal-small
   namespace: gcp-filestore-csi-driver
 spec:
   resources:
     requests:
       storage: 1Ti
-  storageClassName: csi-filestore-zonal
+  storageClassName: zonal-rwx
   accessModes:
   - ReadWriteMany

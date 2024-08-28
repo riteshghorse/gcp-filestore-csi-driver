@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: one-tb
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: zonal-rwx
+  resources:
+    requests:
+      storage: 1Ti

@@ -1,11 +1,10 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: myapp-small-zonal
-  namespace: gcp-filestore-csi-driver
+  name: one-tb-app
 spec:
   containers:
-  - name: myapp-small-zonal
+  - name: one-tb-app
     image: nginx
     volumeMounts:
     - mountPath: /usr/share/nginx/html
@@ -13,4 +12,4 @@ spec:
   volumes:
   - name: vol1
     persistentVolumeClaim:
-      claimName: zonal-small
+      claimName: one-tb
