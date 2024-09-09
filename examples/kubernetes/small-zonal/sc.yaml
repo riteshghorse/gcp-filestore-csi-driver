@@ -1,0 +1,14 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    components.gke.io/layer: addon
+  name: small-zonal-rwx
+  labels:
+    k8s-app: gcp-filestore-csi-driver
+    addonmanager.kubernetes.io/mode: EnsureExists
+provisioner: filestore.csi.storage.gke.io
+parameters:
+  tier: zonal
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true

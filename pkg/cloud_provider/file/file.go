@@ -486,7 +486,8 @@ func (manager *gcfsServiceManager) ResizeInstance(ctx context.Context, obj *Serv
 	)
 	op, err := manager.instancesService.Patch(instanceuri, betaObj).UpdateMask(fileShareUpdateMask).Context(ctx).Do()
 	if err != nil {
-		return nil, fmt.Errorf("patch operation failed: %w", err)
+		return nil, status.Errorf(codes.InvalidArgument, "patch operation failed, check if the requested storage capacity is within limits of the current Filestore tier and band: %v", err)
+		// return nil, fmt.Errorf("patch operation failed: %w", err)
 	}
 
 	klog.V(4).Infof("For instance %s, waiting for patch op %v to complete", instanceuri, op.Name)
@@ -663,7 +664,7 @@ func containsUserErrStr(err error) *codes.Code {
 	if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") {
 		return util.ErrCodePtr(codes.ResourceExhausted)
 	}
-	if strings.Contains(err.Error(), "INVALID_ARGUMENT") {
+	if strings.Contains(err.Error(), "INVALID_ARGUMENT") || strings.Contains(err.Error(), "InvalidArgument") {
 		return util.ErrCodePtr(codes.InvalidArgument)
 	}
 	if strings.Contains(err.Error(), "NOT_FOUND") {

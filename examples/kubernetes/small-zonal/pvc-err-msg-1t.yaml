@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zonal-small
+  namespace: gcp-filestore-csi-driver
+spec:
+  resources:
+    requests:
+      storage: 10Ti
+  storageClassName: small-zonal-rwx
+  accessModes:
+  - ReadWriteMany

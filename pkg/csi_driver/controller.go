@@ -53,8 +53,10 @@ const (
 	enterpriseTierMaxSize = 10 * util.Tb
 	highScaleTierMinSize  = 10 * util.Tb
 	highScaleTierMaxSize  = 100 * util.Tb
-	zonalTierMinSize      = 1 * util.Tb
-	zonalTierMaxSize      = 100 * util.Tb
+	zonalLowTierMinSize   = 1 * util.Tb
+	zonalLowTierMaxSize   = 9984 * util.Gb
+	zonalHighTierMinSize  = 10 * util.Tb
+	zonalHighTierMaxSize  = 100 * util.Tb
 	premiumTierMinSize    = 25 * util.Tb / 10
 	premiumTierMaxSize    = 639 * util.Tb / 10
 
@@ -523,13 +525,13 @@ func invalidCapacityRange(capRange *csi.CapacityRange, tier string, validRange *
 }
 
 // init function to get min and max volume sizes per tier
-func provisionableCapacityForTier(tier string) *capacityRangeForTier {
+func provisionableCapacityForTier(capRange *csi.CapacityRange, tier string) *capacityRangeForTier {
 	defaultRange := capacityRangeForTier{min: defaultTierMinSize, max: defaultTierMaxSize}
 	enterpriseRange := capacityRangeForTier{min: enterpriseTierMinSize, max: enterpriseTierMaxSize}
 	highScaleRange := capacityRangeForTier{min: highScaleTierMinSize, max: highScaleTierMaxSize}
 	premiumRange := capacityRangeForTier{min: premiumTierMinSize, max: premiumTierMaxSize}
-	zonalRange := capacityRangeForTier{min: zonalTierMinSize, max: zonalTierMaxSize}
-	provisionableCapacityForTier := map[string]capacityRangeForTier{
+	zonalRange := capacityRangeForTier{min: zonalLowTierMinSize, max: zonalLowTierMaxSize}
+	tierToCapacityRange := map[string]capacityRangeForTier{
 		defaultTier:    defaultRange,
 		enterpriseTier: enterpriseRange,
 		highScaleTier:  highScaleRange,
@@ -539,17 +541,22 @@ func provisionableCapacityForTier(tier string) *capacityRangeForTier {
 		basicHDDTier:   defaultRange, //these two are aliases
 	}
 
+	if tier == zonalTier && capRange != nil && capRange.GetRequiredBytes() > zonalLowTierMaxSize {
+		// keep this check simple since the capacity bounds are checked thoroughly in the
+		// invalidCapacityRange() later.
+		tierToCapacityRange[zonalTier] = capacityRangeForTier{min: zonalHighTierMinSize, max: zonalHighTierMaxSize}
+	}
 	tier = strings.ToLower(tier)
-	validRange, ok := provisionableCapacityForTier[tier]
+	validRange, ok := tierToCapacityRange[tier]
 	if !ok {
-		validRange = provisionableCapacityForTier[defaultTier]
+		validRange = tierToCapacityRange[defaultTier]
 	}
 	return &validRange
 }
 
 // getRequestCapacity returns the volume size that should be provisioned
 func getRequestCapacity(capRange *csi.CapacityRange, tier string) (int64, error) {
-	validRange := provisionableCapacityForTier(tier)
+	validRange := provisionableCapacityForTier(capRange, tier)
 
 	if capRange == nil {
 		return validRange.min, nil
@@ -721,7 +728,7 @@ func (s *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 		return nil, file.StatusError(err)
 	}
 	if filer.State != "READY" {
-		return nil, fmt.Errorf("lolume %q is not yet ready, current state %q", volumeID, filer.State)
+		return nil, fmt.Errorf("Volume %q is not yet ready, current state %q", volumeID, filer.State)
 	}
 
 	// getFileInstanceFromID doesn't have tier info set, we have to check the range after GetInstance call
@@ -750,7 +757,8 @@ func (s *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 	filer.Volume.SizeBytes = reqBytes
 	newfiler, err := s.config.fileService.ResizeInstance(ctx, filer)
 	if err != nil {
-		return nil, file.StatusError(err)
+		return nil, status.Errorf(codes.InvalidArgument, "")
+		// return nil, file.StatusError(err)
 	}
 
 	klog.Infof("Controller expand volume succeeded for volume %v, new size(bytes): %v", volumeID, newfiler.Volume.SizeBytes)
