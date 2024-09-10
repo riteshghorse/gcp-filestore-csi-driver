@@ -541,12 +541,12 @@ func provisionableCapacityForTier(capRange *csi.CapacityRange, tier string) *cap
 		basicHDDTier:   defaultRange, //these two are aliases
 	}
 
+	tier = strings.ToLower(tier)
 	if tier == zonalTier && capRange != nil && capRange.GetRequiredBytes() > zonalLowTierMaxSize {
 		// keep this check simple since the capacity bounds are checked thoroughly in the
 		// invalidCapacityRange() later.
 		tierToCapacityRange[zonalTier] = capacityRangeForTier{min: zonalHighTierMinSize, max: zonalHighTierMaxSize}
 	}
-	tier = strings.ToLower(tier)
 	validRange, ok := tierToCapacityRange[tier]
 	if !ok {
 		validRange = tierToCapacityRange[defaultTier]
@@ -757,8 +757,8 @@ func (s *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 	filer.Volume.SizeBytes = reqBytes
 	newfiler, err := s.config.fileService.ResizeInstance(ctx, filer)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "")
-		// return nil, file.StatusError(err)
+		// return nil, status.Errorf(codes.InvalidArgument, "")
+		return nil, file.StatusError(err)
 	}
 
 	klog.Infof("Controller expand volume succeeded for volume %v, new size(bytes): %v", volumeID, newfiler.Volume.SizeBytes)
