@@ -1,0 +1,8 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: small-pvc-snapshot
+spec:
+  volumeSnapshotClassName: filestore-snapshot-class
+  source:
+    persistentVolumeClaimName: small-pvc
