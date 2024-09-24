@@ -760,7 +760,7 @@ func (s *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 	newfiler, err := s.config.fileService.ResizeInstance(ctx, filer)
 	if err != nil {
 		// return nil, status.Errorf(codes.InvalidArgument, "")
-		return nil, file.StatusError(err)
+		return nil, status.Error(codes.InvalidArgument, "cannot increase capacity")
 	}
 
 	klog.Infof("Controller expand volume succeeded for volume %v, new size(bytes): %v", volumeID, newfiler.Volume.SizeBytes)
