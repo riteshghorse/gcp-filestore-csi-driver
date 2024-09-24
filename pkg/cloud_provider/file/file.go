@@ -681,7 +681,7 @@ func isFilestoreLimitError(err error) *codes.Code {
 		return nil
 	}
 	if strings.Contains(err.Error(), "capacity cannot be more than 9984 GiB") {
-		return util.ErrCodePtr(codes.ResourceExhausted)
+		return util.ErrCodePtr(codes.InvalidArgument)
 	}
 	if strings.Contains(err.Error(), "System limit for internal resources has been reached") {
 		return util.ErrCodePtr(codes.ResourceExhausted)
