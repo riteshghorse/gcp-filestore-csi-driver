@@ -13,4 +13,4 @@ namespace: gcp-filestore-csi-driver
 images:
 - name: registry.k8s.io/cloud-provider-gcp/gcp-filestore-csi-driver
   newName: gcr.io/riteshghorse-consumer/gcp-filestore-csi-driver
-  newTag: small-zonal-1
+  newTag: zonal-resize-1

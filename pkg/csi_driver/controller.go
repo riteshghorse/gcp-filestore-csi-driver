@@ -106,6 +106,25 @@ const (
 	TagKeyClusterLocation          = "storage_gke_io_cluster_location"
 )
 
+var (
+	defaultRange    = capacityRangeForTier{min: defaultTierMinSize, max: defaultTierMaxSize}
+	enterpriseRange = capacityRangeForTier{min: enterpriseTierMinSize, max: enterpriseTierMaxSize}
+	highScaleRange  = capacityRangeForTier{min: highScaleTierMinSize, max: highScaleTierMaxSize}
+	premiumRange    = capacityRangeForTier{min: premiumTierMinSize, max: premiumTierMaxSize}
+	zonalSmallRange = capacityRangeForTier{min: zonalLowTierMinSize, max: zonalLowTierMaxSize}
+	zonalLargeRange = capacityRangeForTier{min: zonalHighTierMinSize, max: zonalHighTierMaxSize}
+)
+
+var tierToCapacityRange map[string]capacityRangeForTier = map[string]capacityRangeForTier{
+	defaultTier:    defaultRange,
+	enterpriseTier: enterpriseRange,
+	highScaleTier:  highScaleRange,
+	zonalTier:      zonalSmallRange,
+	premiumTier:    premiumRange,
+	basicSSDTier:   premiumRange, //these two are aliases
+	basicHDDTier:   defaultRange, //these two are aliases
+}
+
 type capacityRangeForTier struct {
 	min int64
 	max int64
@@ -528,21 +547,6 @@ func invalidCapacityRange(capRange *csi.CapacityRange, tier string, validRange *
 
 // init function to get min and max volume sizes per tier
 func provisionableCapacityForTier(capRange *csi.CapacityRange, tier string) *capacityRangeForTier {
-	defaultRange := capacityRangeForTier{min: defaultTierMinSize, max: defaultTierMaxSize}
-	enterpriseRange := capacityRangeForTier{min: enterpriseTierMinSize, max: enterpriseTierMaxSize}
-	highScaleRange := capacityRangeForTier{min: highScaleTierMinSize, max: highScaleTierMaxSize}
-	premiumRange := capacityRangeForTier{min: premiumTierMinSize, max: premiumTierMaxSize}
-	zonalRange := capacityRangeForTier{min: zonalLowTierMinSize, max: zonalLowTierMaxSize}
-	tierToCapacityRange := map[string]capacityRangeForTier{
-		defaultTier:    defaultRange,
-		enterpriseTier: enterpriseRange,
-		highScaleTier:  highScaleRange,
-		zonalTier:      zonalRange,
-		premiumTier:    premiumRange,
-		basicSSDTier:   premiumRange, //these two are aliases
-		basicHDDTier:   defaultRange, //these two are aliases
-	}
-
 	tier = strings.ToLower(tier)
 	if tier == zonalTier && capRange != nil && capRange.GetRequiredBytes() > zonalLowTierMaxSize {
 		// keep this check simple since the capacity bounds are checked thoroughly in the
@@ -580,6 +584,18 @@ func getRequestCapacity(capRange *csi.CapacityRange, tier string) (int64, error)
 	} else {
 		return validRange.min, nil
 	}
+}
+
+func invalidVolumeExpansionRequest(capRange *csi.CapacityRange, currentCapacity int64, tier string) (bool, int64) {
+	requiredCap := capRange.GetRequiredBytes()
+	switch strings.ToLower(tier) {
+	case zonalTier:
+		if currentCapacity <= zonalLowTierMaxSize && requiredCap >= zonalLowTierMaxSize {
+			klog.Warningf("current_capacity: %v, required: %v, it is an invalid request", currentCapacity, requiredCap)
+			return true, zonalLowTierMaxSize
+		}
+	}
+	return false, requiredCap
 }
 
 // generateNewFileInstance populates the GCFS Instance object using
@@ -733,8 +749,17 @@ func (s *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 		return nil, fmt.Errorf("Volume %q is not yet ready, current state %q", volumeID, filer.State)
 	}
 
+	// if it a zonal tier, then check if the initial capacity is in which band. Accordingly process requests for
+	// volume expansion. Don't let bands cross.
+	invalidExpansion, _ := invalidVolumeExpansionRequest(req.GetCapacityRange(), filer.Volume.SizeBytes, filer.Tier)
+	var reqBytes int64
+	if invalidExpansion {
+		klog.Warningf("Volume expansion not supported beyond small %s band. A band is assigned at the time of instance creation. Assigning maximum possible capacity in the current band of the tier.", filer.Tier)
+		// return nil, status.Errorf(codes.InvalidArgument, "Volume expansion not supported beyond small %s band. A band is assigned at the time of instance creation. Assigning maximum possible capacity in the current band of the tier.", filer.Tier)
+		return nil, fmt.Errorf("invalid request, file instance: %+v", filer)
+	}
 	// getFileInstanceFromID doesn't have tier info set, we have to check the range after GetInstance call
-	reqBytes, err := getRequestCapacity(req.GetCapacityRange(), filer.Tier)
+	reqBytes, err = getRequestCapacity(req.GetCapacityRange(), filer.Tier)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -760,7 +785,7 @@ func (s *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 	newfiler, err := s.config.fileService.ResizeInstance(ctx, filer)
 	if err != nil {
 		// return nil, status.Errorf(codes.InvalidArgument, "")
-		return nil, status.Error(codes.InvalidArgument, "cannot increase capacity")
+		return nil, status.Errorf(codes.OutOfRange, "cannot increase capacity to %v, with error %v", reqBytes, err)
 	}
 
 	klog.Infof("Controller expand volume succeeded for volume %v, new size(bytes): %v", volumeID, newfiler.Volume.SizeBytes)

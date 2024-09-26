@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: small-pvc-app
+  namespace: gcp-filestore-csi-driver
+spec:
+  containers:
+  - name: small-pvc-app
+    image: nginx
+    volumeMounts:
+    - mountPath: /usr/share/nginx/html
+      name: vol1
+  volumes:
+  - name: vol1
+    persistentVolumeClaim:
+      claimName: small-pvc
