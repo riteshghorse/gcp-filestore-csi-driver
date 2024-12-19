@@ -52,12 +52,21 @@ type PollOpts struct {
 	Interval time.Duration
 	Timeout  time.Duration
 }
+
 type NfsExportOptions struct {
-	AccessMode string   `json:"accessMode,omitempty"`
-	AnonGid    int64    `json:"anonGid,omitempty,string"`
-	AnonUid    int64    `json:"anonUid,omitempty,string"`
-	IpRanges   []string `json:"ipRanges,omitempty"`
-	SquashMode string   `json:"squashMode,omitempty"`
+	AccessMode      string   `json:"accessMode,omitempty"`
+	AnonGid         int64    `json:"anonGid,omitempty,string"`
+	AnonUid         int64    `json:"anonUid,omitempty,string"`
+	IpRanges        []string `json:"ipRanges,omitempty"`
+	SquashMode      string   `json:"squashMode,omitempty"`
+	SecurityFlavors []string `json:"securityFlavors,omitempty"`
+}
+
+// ManagedADOptions represent the configuration for Microsoft Managed Active
+// Directory with Filestore.
+type ManagedADOptions struct {
+	Domain   string
+	Computer string
 }
 
 type Share struct {
@@ -99,18 +108,19 @@ type ListFilter struct {
 }
 
 type ServiceInstance struct {
-	Project          string
-	Name             string
-	Location         string
-	Tier             string
-	Network          Network
-	Volume           Volume
-	Labels           map[string]string
-	State            string
-	KmsKeyName       string
-	BackupSource     string
-	NfsExportOptions []*NfsExportOptions
-	Protocol         string
+	Project                      string
+	Name                         string
+	Location                     string
+	Tier                         string
+	Network                      Network
+	Volume                       Volume
+	Labels                       map[string]string
+	State                        string
+	KmsKeyName                   string
+	BackupSource                 string
+	NfsExportOptions             []*NfsExportOptions
+	Protocol                     string
+	ManagedActiveDirectoryConfig *ManagedADOptions
 }
 
 type Volume struct {

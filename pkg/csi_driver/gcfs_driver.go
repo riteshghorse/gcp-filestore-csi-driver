@@ -103,6 +103,7 @@ type GCFSDriverFeatureOptions struct {
 	FeatureStateful                 *FeatureStateful
 	FeatureMultishareBackups        *FeatureMultishareBackups
 	FeatureNFSExportOptionsOnCreate *FeatureNFSExportOptionsOnCreate
+	FeatureManagedADOnCreate        *FeatureManagedADOnCreate
 }
 
 type FeatureMultishareBackups struct {
@@ -110,6 +111,10 @@ type FeatureMultishareBackups struct {
 }
 
 type FeatureNFSExportOptionsOnCreate struct {
+	Enabled bool
+}
+
+type FeatureManagedADOnCreate struct {
 	Enabled bool
 }
 

@@ -91,6 +91,7 @@ const (
 	ParamNfsExportOptions          = "nfs-export-options-on-create"
 	paramMaxVolumeSize             = "max-volume-size"
 	paramFileProtocol              = "protocol"
+	paramManagedAD                 = "managed-ad-on-create"
 
 	// Keys for PV and PVC parameters as reported by external-provisioner
 	ParameterKeyPVCName      = "csi.storage.k8s.io/pvc/name"
@@ -626,6 +627,7 @@ func (s *controllerServer) generateNewFileInstance(name string, capBytes int64, 
 	// Set default parameters
 	tier := defaultTier
 	var nfsExportOptions []*file.NfsExportOptions
+	var managedADOptions *file.ManagedADOptions
 	network := defaultNetwork
 	connectMode := directPeering
 	kmsKeyName := ""
@@ -643,6 +645,14 @@ func (s *controllerServer) generateNewFileInstance(name string, capBytes int64, 
 					return nil, fmt.Errorf("failed to get region from zone %s: %w", location, err)
 				}
 				location = region
+			}
+		case paramManagedAD:
+			if s.config.features.FeatureManagedADOnCreate == nil || !s.config.features.FeatureManagedADOnCreate.Enabled {
+				return nil, fmt.Errorf("the Managed AD feature is disabled")
+			}
+			managedADOptions, err = parseManagedADOptions(v)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse managed-ad-on-create %s: %v", v, err)
 			}
 		case ParamNfsExportOptions:
 			if s.config.features.FeatureNFSExportOptionsOnCreate == nil || !s.config.features.FeatureNFSExportOptionsOnCreate.Enabled {
@@ -1125,6 +1135,18 @@ func parseNfsExportOptions(optionsString string) ([]*file.NfsExportOptions, erro
 		return nil, nil
 	}
 	var parsedOptions []*file.NfsExportOptions
+	err := strictUnmarshal([]byte(optionsString), &parsedOptions)
+	if err != nil {
+		return nil, err
+	}
+	return parsedOptions, nil
+}
+
+func parseManagedADOptions(optionsString string) (*file.ManagedADOptions, error) {
+	if optionsString == "" {
+		return nil, nil
+	}
+	var parsedOptions *file.ManagedADOptions
 	err := strictUnmarshal([]byte(optionsString), &parsedOptions)
 	if err != nil {
 		return nil, err
