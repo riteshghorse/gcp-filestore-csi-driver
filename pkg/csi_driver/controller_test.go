@@ -501,7 +501,7 @@ func TestCreateVolume(t *testing.T) {
 			},
 			resp: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					CapacityBytes: 1 * util.Tb,
+					CapacityBytes: 100 * util.Gb,
 					VolumeId:      testVolumeID,
 					VolumeContext: map[string]string{
 						attrIP:           testIP,
@@ -692,7 +692,7 @@ func TestCreateVolume(t *testing.T) {
 			},
 			resp: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					CapacityBytes: 1 * util.Tb,
+					CapacityBytes: 100 * util.Gb,
 					VolumeId:      testVolumeID,
 					VolumeContext: map[string]string{
 						attrIP:           testIP,
@@ -801,25 +801,17 @@ func TestGetRequestCapacity(t *testing.T) {
 	}{
 		{
 			name:  "default",
-			bytes: 1 * util.Tb,
+			bytes: 100 * util.Gb,
 			tier:  defaultTier,
-		},
-		{
-			name: "required below min, limit not provided",
-			capRange: &csi.CapacityRange{
-				RequiredBytes: 100 * util.Gb,
-			},
-			tier:          defaultTier,
-			bytes:         1 * util.Tb,
-			errorExpected: false,
 		},
 		{
 			name: "required equals min",
 			capRange: &csi.CapacityRange{
-				RequiredBytes: 1 * util.Tb,
+				RequiredBytes: 100 * util.Gb,
 			},
-			tier:  defaultTier,
-			bytes: 1 * util.Tb,
+			tier:          defaultTier,
+			bytes:         100 * util.Gb,
+			errorExpected: false,
 		},
 		{
 			name: "required above min",
@@ -832,10 +824,10 @@ func TestGetRequestCapacity(t *testing.T) {
 		{
 			name: "limit equals min",
 			capRange: &csi.CapacityRange{
-				LimitBytes: 1 * util.Tb,
+				LimitBytes: 100 * util.Gb,
 			},
 			tier:  defaultTier,
-			bytes: 1 * util.Tb,
+			bytes: 100 * util.Gb,
 		},
 		{
 			name: "limit above min",
@@ -848,17 +840,17 @@ func TestGetRequestCapacity(t *testing.T) {
 		{
 			name: "required below min, limit above min",
 			capRange: &csi.CapacityRange{
-				RequiredBytes: 100 * util.Gb,
+				RequiredBytes: 80 * util.Gb,
 				LimitBytes:    2 * util.Tb,
 			},
 			tier:  defaultTier,
-			bytes: 1 * util.Tb,
+			bytes: 100 * util.Gb,
 		},
 		{
 			name: "required below min, limit below min",
 			capRange: &csi.CapacityRange{
-				RequiredBytes: 100 * util.Gb,
-				LimitBytes:    500 * util.Gb,
+				RequiredBytes: 50 * util.Gb,
+				LimitBytes:    90 * util.Gb,
 			},
 			tier:          defaultTier,
 			errorExpected: true,
@@ -875,7 +867,7 @@ func TestGetRequestCapacity(t *testing.T) {
 		{
 			name: "limit below min default",
 			capRange: &csi.CapacityRange{
-				LimitBytes: 100 * util.Gb,
+				LimitBytes: 10 * util.Gb,
 			},
 			tier:          defaultTier,
 			errorExpected: true,
@@ -1009,7 +1001,7 @@ func TestGetRequestCapacity(t *testing.T) {
 		{
 			name: "limit below min basicHDD",
 			capRange: &csi.CapacityRange{
-				LimitBytes: 100 * util.Gb,
+				LimitBytes: 10 * util.Gb,
 			},
 			tier:          basicHDDTier,
 			errorExpected: true,

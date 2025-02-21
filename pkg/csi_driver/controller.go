@@ -49,7 +49,7 @@ const (
 	v3FileProtocol   = "NFS_V3"
 	v4_1FileProtocol = "NFS_V4_1"
 
-	defaultTierMinSize    = 1 * util.Tb
+	defaultTierMinSize    = 100 * util.Gb
 	defaultTierMaxSize    = 639 * util.Tb / 10
 	enterpriseTierMinSize = 1 * util.Tb
 	enterpriseTierMaxSize = 10 * util.Tb
