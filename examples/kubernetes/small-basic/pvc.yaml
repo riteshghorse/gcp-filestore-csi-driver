@@ -1,11 +1,12 @@
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: podpvc-1
+  name: basic-pvc
+  namespace: gcp-filestore-csi-driver
 spec:
   accessModes:
   - ReadWriteMany
   storageClassName: small-basic-rwx
   resources:
     requests:
-      storage: 100Gi
+      storage: 1.2Ti
