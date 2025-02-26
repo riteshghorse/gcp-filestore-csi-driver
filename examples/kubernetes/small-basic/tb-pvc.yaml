@@ -1,0 +1,12 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: tbpvc
+  namespace: gcp-filestore-csi-driver
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: small-basic-rwx
+  resources:
+    requests:
+      storage: 1Ti

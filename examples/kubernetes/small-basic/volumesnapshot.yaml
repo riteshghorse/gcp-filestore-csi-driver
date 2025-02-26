@@ -1,0 +1,9 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: basic-pvc-snapshot
+  namespace: gcp-filestore-csi-driver
+spec:
+  volumeSnapshotClassName: filestore-snapshot-class
+  source:
+    persistentVolumeClaimName: basic-pvc
